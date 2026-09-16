@@ -1,0 +1,18 @@
+| Feature                              | What it does                                                                                         | Difficulty |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------- | ---------- |
+| 🗣️ **Multilingual Weather Chat**    | Ask weather questions in English, Telugu, Hindi, Tamil, Kannada, etc.                                | ⭐⭐         |
+| 🎙️ **Voice Weather Assistant**      | User speaks → AI understands → responds through voice                                                | ⭐⭐         |
+| 📍 **Hyperlocal Forecast**           | Forecast based on GPS/location, not just city-level weather                                          | ⭐⭐         |
+| ⚠️ **Smart Alert System**            | Converts weather warnings into simple actionable alerts                                              | ⭐⭐         |
+| 🧠 **“What Should I Do?” AI**        | Instead of only saying *“Heavy rain expected”*, gives practical actions based on the user's activity | ⭐⭐⭐        |
+| 🌾 **Farmer Mode**                   | Weather-based suggestions for irrigation, spraying, harvesting, etc.                                 | ⭐⭐⭐        |
+| 🚗 **Travel Safety Mode**            | User enters destination → weather risks along the route                                              | ⭐⭐⭐        |
+| 🎓 **Student/Campus Mode**           | Suggests whether outdoor classes/events/sports should be shifted based on forecast                   | ⭐⭐         |
+| 🏠 **Personal Weather Profile**      | User chooses interests: farming, travel, health, outdoor work, etc.; alerts are personalized         | ⭐⭐         |
+| 📊 **Climate Trend Explorer**        | Compare historical temperature/rainfall with current trends                                          | ⭐⭐⭐        |
+| 🔮 **Weather Risk Score**            | Generates a simple 0–100 risk score using rainfall, wind, temperature, visibility, etc.              | ⭐⭐⭐        |
+| 🗺️ **Interactive Weather Risk Map** | Map showing rainfall, temperature, storms, alerts and vulnerable areas                               | ⭐⭐⭐        |
+| 📡 **Offline/SMS-style Alert Mode**  | Cache the latest forecast so basic information remains available with poor connectivity              | ⭐⭐⭐        |
+| 📰 **Weather Bulletin Summarizer**   | Converts long official weather bulletins into 3–5 simple points                                      | ⭐⭐         |
+| 👨‍🌾 **Crop Weather Calendar**      | Shows upcoming weather windows suitable for activities like sowing, spraying and harvesting          | ⭐⭐⭐        |
+| 🚨 **Alert Escalation**              | Low → Moderate → Severe based on changing forecast conditions                                        | ⭐⭐⭐        |
