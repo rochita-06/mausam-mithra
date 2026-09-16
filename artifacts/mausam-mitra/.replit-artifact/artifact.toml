@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Mausam Mitra Weather AI"
+description = "A conversational weather and climate assistant for India with location-specific forecasts, extreme-weather advisories, multilingual support, voice interaction, and historical climate signals."
+version = "1.0.0"
+id = "artifacts/mausam-mitra"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19835
+
+[services.development]
+run = "pnpm --filter @workspace/mausam-mitra run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/mausam-mitra", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/mausam-mitra/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19835"
+BASE_PATH = "/"

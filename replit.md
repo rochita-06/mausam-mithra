@@ -1,6 +1,6 @@
-# [Project name]
+# Mausam Mitra Weather AI
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Mausam Mitra is a multilingual conversational weather and climate assistant for India, powered by live Open-Meteo data and designed for clear, actionable decisions.
 
 ## Run & Operate
 
@@ -22,15 +22,20 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/mausam-mitra/src/App.tsx` — the weather assistant interface, live forecast data fetching, location search, language preferences, voice controls, advisories, and climate views.
+- `artifacts/mausam-mitra/src/index.css` — the shared visual system for the web app.
+- `artifacts/mausam-mitra/.replit-artifact/artifact.toml` — artifact routing and managed web workflow.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The first version is frontend-first and uses Open-Meteo's public geocoding, forecast, and archive endpoints directly so live weather works without user-managed API keys.
+- Browser geolocation and Web Speech APIs are progressive enhancements; the core experience remains usable when either capability is unavailable.
+- Weather questions are interpreted locally for fast, offline-friendly intent matching and translated guidance, while forecast values remain sourced from the live weather response.
+- Preferences such as language, units, and saved location are stored in local storage to keep setup lightweight.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+The app supports current conditions, 7-day forecasts, location search, natural-language questions, quick asks for commuting and farming, extreme-weather advisories, climate trend context, nine Indian language choices, Celsius/Fahrenheit settings, and browser voice input/output.
 
 ## User preferences
 
@@ -38,7 +43,9 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- The live weather and climate panels require network access to Open-Meteo.
+- Voice controls depend on browser Web Speech API support and permission.
+- Forecast timestamps are displayed in the selected location's timezone, while update metadata reflects the user's local display timezone.
 
 ## Pointers
 
