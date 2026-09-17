@@ -1,0 +1,1 @@
+- [Weather Twin guidance](weather-twin.md) — keep recommendations profile-specific, explainable, and clearly separate from official warnings.

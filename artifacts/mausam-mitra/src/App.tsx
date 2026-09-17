@@ -49,6 +49,7 @@ import { Link, Route, Router as WouterRouter, Switch, useLocation } from 'wouter
 
 type Unit = 'celsius' | 'fahrenheit';
 type Language = 'en' | 'hi' | 'bn' | 'mr' | 'ta' | 'te' | 'kn' | 'ml' | 'gu';
+type WeatherProfile = 'farmer' | 'student' | 'driver' | 'fisherman' | 'tourist' | 'outdoor-worker' | 'disaster-manager';
 type LocationPoint = { name: string; admin1?: string; latitude: number; longitude: number };
 type ForecastDay = {
   date: string;
@@ -106,6 +107,16 @@ const LANGUAGES: { value: Language; label: string; native: string }[] = [
   { value: 'gu', label: 'Gujarati', native: 'ગુજરાતી' },
 ];
 
+const WEATHER_PROFILES: { value: WeatherProfile; label: string; description: string }[] = [
+  { value: 'farmer', label: 'Farmer', description: 'Field work, irrigation, and spraying' },
+  { value: 'student', label: 'Student', description: 'Classes, sports, and campus plans' },
+  { value: 'driver', label: 'Driver', description: 'Road visibility and safer travel windows' },
+  { value: 'fisherman', label: 'Fisherman', description: 'Wind and marine-safety awareness' },
+  { value: 'tourist', label: 'Tourist', description: 'Outdoor comfort and changing conditions' },
+  { value: 'outdoor-worker', label: 'Outdoor worker', description: 'Heat, hydration, and work timing' },
+  { value: 'disaster-manager', label: 'Disaster manager', description: 'Early signals and preparedness checks' },
+];
+
 const copy: Record<Language, Record<string, string>> = {
   en: { overview: 'Overview', climate: 'Climate signals', advisories: 'Advisories', decision: 'Decision desk', settings: 'Settings', ask: 'Ask Mausam Mitra', today: 'Today', forecast: '7-day forecast', updated: 'Updated just now', useLocation: 'Use my location', search: 'Search a city in India', source: 'Source: Open-Meteo', noSignal: 'No severe weather signal', listen: 'Listen', stop: 'Stop' },
   hi: { overview: 'अवलोकन', climate: 'जलवायु संकेत', advisories: 'सलाह', settings: 'सेटिंग्स', ask: 'मौसम मित्र से पूछें', today: 'आज', forecast: '7 दिन का पूर्वानुमान', updated: 'अभी अपडेट हुआ', useLocation: 'मेरी लोकेशन लें', search: 'भारत में शहर खोजें', source: 'स्रोत: Open-Meteo', noSignal: 'गंभीर मौसम संकेत नहीं', listen: 'सुनें', stop: 'रोकें' },
@@ -151,6 +162,48 @@ function weatherRisk(data: WeatherSnapshot) {
     level: normalized >= 70 ? 'Severe' : normalized >= 40 ? 'Moderate' : 'Low',
     drivers: drivers.length ? drivers : ['no major hazard thresholds'],
   };
+}
+
+function personalizedAdvice(data: WeatherSnapshot, profile: WeatherProfile, prompt: string, unit: Unit) {
+  const today = data.days[0];
+  const rainy = today.rainChance >= 60 || today.rain >= 12;
+  const windy = today.wind >= 35;
+  const hot = today.max >= 35 || data.current.temperature >= 35;
+  const lower = prompt.toLowerCase();
+  const rainLine = `${today.rainChance}% rain chance and up to ${today.rain.toFixed(1)} mm expected`;
+  if (profile === 'farmer' || lower.includes('spray') || lower.includes('pesticide') || lower.includes('irrigat')) {
+    return rainy
+      ? { level: 'CAUTION', title: 'Wait for a drier field window', detail: `Rain is the deciding factor today: ${rainLine}. Spraying now can wash treatment away and heavy irrigation may be unnecessary.`, action: 'Check the next low-rain, lower-wind window before starting.' }
+      : { level: 'GO', title: 'A workable window for field tasks', detail: `No strong rain signal is showing. Keep spraying to the cooler, lower-wind part of the day and check soil moisture before irrigating.`, action: `Wind may reach ${Math.round(today.wind)} km/h; avoid spraying if it rises.` };
+  }
+  if (profile === 'driver' || lower.includes('commute') || lower.includes('travel') || lower.includes('drive')) {
+    return rainy || windy
+      ? { level: 'WATCH', title: 'Build extra time into the journey', detail: `${rainLine}${windy ? `, with wind up to ${Math.round(today.wind)} km/h` : ''}. Roads can slow quickly when visibility and grip change.`, action: 'Prefer the morning window, avoid low-lying routes, and keep a rain layer in the vehicle.' }
+      : { level: 'GO', title: 'No major road-weather signal', detail: `Conditions look manageable for a normal trip. Visibility and rainfall are not currently pointing to a disruption window.`, action: 'Check again before departure because local showers can still vary.' };
+  }
+  if (profile === 'student') {
+    return rainy || windy
+      ? { level: 'WATCH', title: 'Keep an indoor backup for campus plans', detail: `Outdoor classes, sports, or events may be interrupted by ${rainy ? 'showers' : 'gusty winds'}.`, action: 'Carry rain protection and confirm any outdoor schedule before leaving.' }
+      : { level: 'GO', title: 'A good day for campus plans', detail: 'No major rain or wind disruption is showing in the forecast.', action: hot ? 'Plan outdoor activity earlier and carry water.' : 'Normal outdoor plans look reasonable.' };
+  }
+  if (profile === 'fisherman') {
+    return windy
+      ? { level: 'CAUTION', title: 'Wind needs a marine-safety check', detail: `Winds may reach ${Math.round(today.wind)} km/h. This app does not provide wave or official marine-warning data.`, action: 'Check IMD marine bulletins and local harbour guidance before departure.' }
+      : { level: 'CHECK', title: 'No strong wind signal in this forecast', detail: 'A calm-looking land forecast is not a substitute for wave, tide, or marine-warning information.', action: 'Confirm the official marine bulletin before going out.' };
+  }
+  if (profile === 'tourist') {
+    return rainy || windy
+      ? { level: 'WATCH', title: 'Keep the itinerary flexible', detail: `Rain and changing conditions may affect outdoor sightseeing today.`, action: 'Put indoor stops first and carry light rain protection.' }
+      : { level: 'GO', title: 'Comfortable for exploring', detail: `The forecast is relatively open for outdoor plans${hot ? ', but afternoon heat will build' : ''}.`, action: hot ? `Start earlier and carry water; temperatures may reach ${formatTemp(today.max, unit)}.` : 'A normal outdoor itinerary looks reasonable.' };
+  }
+  if (profile === 'disaster-manager') {
+    return rainy || windy || hot
+      ? { level: 'WATCH', title: 'Review local preparedness checks', detail: `The forecast has a planning signal: ${rainy ? rainLine : ''}${windy ? ` wind up to ${Math.round(today.wind)} km/h` : ''}${hot ? ` heat up to ${formatTemp(today.max, unit)}` : ''}.`, action: 'Compare this model signal with official district and IMD alerts before escalating.' }
+      : { level: 'CLEAR', title: 'No major threshold signal', detail: 'The current forecast does not cross the app’s rain, wind, or heat thresholds.', action: 'Keep monitoring official alerts and confirm local reports.' };
+  }
+  return hot
+    ? { level: 'CAUTION', title: 'Move demanding work earlier', detail: `Afternoon heat may reach ${formatTemp(today.max, unit)}. Heat load will be highest after late morning.`, action: 'Hydrate before you feel thirsty and schedule breaks in shade.' }
+    : { level: 'GO', title: 'A manageable outdoor work window', detail: 'No major heat, rain, or wind signal is showing for the day.', action: 'Keep checking conditions if your work extends into the afternoon.' };
 }
 
 async function geocodeCity(query: string): Promise<LocationPoint[]> {
@@ -470,6 +523,55 @@ function DecisionPage({ location, language, unit }: { location: LocationPoint; l
   return <div className="space-y-8"><SectionHeading eyebrow="DECISION DESK / CONTEXTUAL GUIDANCE" title="Make the next move with more confidence." description="Choose an activity and Mausam Mitra translates the live forecast into a practical decision." action={<div className="rounded-full border border-[#c8d5ce] bg-[#e3eee6] px-3 py-2 text-xs font-bold text-[#38705c]">{risk ? `${risk.score}/100 risk` : 'Reading risk'}</div>} />{error ? <ErrorState message={error} onRetry={refresh} /> : loading ? <Skeleton className="h-80" /> : <div className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]"><div className="rounded-[1.5rem] border border-[hsl(var(--card-border))] bg-[hsl(var(--card))] p-6"><div className="flex items-center gap-3"><Tractor className="h-6 w-6 text-[hsl(var(--accent))]" /><div><p className="font-data text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(var(--accent))]">FARMER MODE</p><h2 className="mt-2 font-display text-3xl">What should I do today?</h2></div></div><p className="mt-6 rounded-xl bg-[#e7f0e6] p-4 text-sm leading-relaxed text-[#31595a]">{firstDay?.rainChance >= 60 ? 'Delay spraying and avoid heavy irrigation. Moisture is already likely to arrive from the sky; use the next drier window instead.' : firstDay?.max !== undefined && firstDay.max >= 35 ? 'Prefer irrigation and field work before late morning. Avoid spraying in the hottest hours and check wind before applying treatment.' : 'A generally workable field day. Check soil moisture before irrigating and use the lower-wind window for spraying.'}</p><div className="mt-7"><div className="flex items-end justify-between"><div><p className="font-data text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--accent))]">CROP WEATHER CALENDAR</p><p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">Seven-day work windows for {location.name}</p></div><Sprout className="h-5 w-5 text-[#6fa9a1]" /></div><div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-7">{data?.days.map((day) => { const score = Math.max(0, Math.round(100 - day.rainChance * 0.7 - Math.max(0, day.wind - 18) * 1.1)); return <div key={day.date} className="rounded-xl border border-[hsl(var(--border))] p-2.5 text-center"><p className="font-data text-[10px] text-[hsl(var(--muted-foreground))]">{formatDate(day.date, { weekday: 'short' })}</p><p className="my-3 font-display text-2xl">{score}</p><p className="text-[10px] leading-tight text-[hsl(var(--muted-foreground))]">{day.rainChance >= 60 ? 'Avoid spray' : day.wind >= 28 ? 'Wind watch' : 'Good window'}</p></div>; })}</div></div></div><aside className="rounded-[1.5rem] bg-[#173e47] p-6 text-[#f7f2e7]"><div className="flex items-center gap-2 text-[#e88c2f]"><ShieldAlert className="h-4 w-4" /><span className="font-data text-[10px] font-bold uppercase tracking-[.18em]">WEATHER RISK SCORE</span></div><div className="mt-5 flex items-end gap-2"><span className="font-display text-7xl">{risk?.score ?? '—'}</span><span className="mb-3 text-sm text-[#a5c7bd]">out of 100</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[#2c5960]"><div className="h-full rounded-full bg-[#e88c2f]" style={{ width: `${risk?.score ?? 0}%` }} /></div><p className="mt-3 text-sm font-bold">{risk?.level} planning risk</p><p className="mt-2 text-sm leading-relaxed text-[#b2cbc2]">Weighted from rainfall probability, rainfall amount, wind, heat, and visibility. Use it to decide what to check next.</p><div className="mt-7 border-t border-[#6e9f98]/35 pt-5"><p className="font-data text-[10px] uppercase tracking-[.18em] text-[#a5c7bd]">MAIN DRIVERS</p><div className="mt-3 space-y-2">{risk?.drivers.map((driver) => <div key={driver} className="flex items-start gap-2 text-sm"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#e88c2f]" />{driver}</div>)}</div></div><p className="mt-7 text-xs leading-relaxed text-[#a5c7bd]">For severe weather, follow official IMD and local disaster-management alerts.</p></aside></div>}</div>;
 }
 
+function WeatherTwinPage({ location, language, unit }: { location: LocationPoint; language: Language; unit: Unit }) {
+  const { data, loading, error, refresh } = useWeather(location);
+  const [profile, setProfile] = useState<WeatherProfile>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('mausam-mitra-profile') ?? '"farmer"') as WeatherProfile;
+    } catch {
+      return 'farmer';
+    }
+  });
+  const [prompt, setPrompt] = useState('');
+  const [submittedPrompt, setSubmittedPrompt] = useState('');
+  const advice = data ? personalizedAdvice(data, profile, submittedPrompt, unit) : null;
+  const risk = data ? weatherRisk(data) : null;
+  const selectedProfile = WEATHER_PROFILES.find((item) => item.value === profile) ?? WEATHER_PROFILES[0];
+  const quickPrompts = profile === 'farmer'
+    ? ['Should I spray pesticide tomorrow?', 'Should I irrigate today?']
+    : profile === 'driver'
+      ? ['Is it safe to drive this afternoon?', 'Will rain affect my commute?']
+      : ['Should I plan an outdoor activity today?', 'What should I watch before I leave?'];
+  const chooseProfile = (value: WeatherProfile) => {
+    setProfile(value);
+    setSubmittedPrompt('');
+    try { localStorage.setItem('mausam-mitra-profile', JSON.stringify(value)); } catch { /* preference is best effort */ }
+  };
+  const ask = (value = prompt) => {
+    setSubmittedPrompt(value);
+    setPrompt('');
+  };
+  return <div className="space-y-8">
+    <SectionHeading eyebrow="WEATHER TWIN / ACTION-FIRST GUIDANCE" title="What should I do?" description={`The same forecast means different things to a farmer, driver, student, or visitor. Pick a profile and Mausam Mitra will explain the next sensible action for ${location.name}.`} action={<div className="rounded-full border border-[#c8d5ce] bg-[#e3eee6] px-3 py-2 text-xs font-bold text-[#38705c]">{risk ? `${risk.score}/100 planning risk` : 'Reading forecast'}</div>} />
+    {error && !data ? <ErrorState message={error} onRetry={refresh} /> : <section className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
+      <div className="rounded-[1.5rem] border border-[hsl(var(--card-border))] bg-[hsl(var(--card))] p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-4"><div><p className="font-data text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(var(--accent))]">PERSONALIZED WEATHER TWIN</p><h2 className="mt-2 font-display text-3xl">Who are you planning for?</h2></div><HeartPulse className="h-6 w-6 text-[hsl(var(--accent))]" /></div>
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">{WEATHER_PROFILES.map((item) => <button key={item.value} onClick={() => chooseProfile(item.value)} className={`rounded-xl border p-3 text-left transition ${profile === item.value ? 'border-[#6e9f98] bg-[#e3eee6] shadow-sm' : 'border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]'}`}><span className="block text-sm font-bold text-[hsl(var(--foreground))]">{item.label}</span><span className="mt-1 block text-xs leading-relaxed text-[hsl(var(--muted-foreground))]">{item.description}</span></button>)}</div>
+        <div className="mt-6 rounded-xl bg-[#f4ead8] p-4"><p className="font-data text-[10px] font-bold uppercase tracking-[.18em] text-[#7c6245]">CURRENT MODE / {selectedProfile.label.toUpperCase()}</p><p className="mt-2 text-sm leading-relaxed text-[#4d4a3b]">{selectedProfile.description}. Guidance stays explainable: it uses the live forecast signals shown below, not a hidden score.</p></div>
+      </div>
+      <div className="rounded-[1.5rem] bg-[#173e47] p-5 text-[#f7f2e7] sm:p-6">
+        <div className="flex items-center gap-2 text-[#e88c2f]"><Navigation className="h-4 w-4" /><span className="font-data text-[10px] font-bold uppercase tracking-[.2em]">NEXT ACTION</span></div>
+        {loading ? <Skeleton className="mt-6 h-48 bg-[#2c5960]" /> : advice ? <><div className="mt-5 flex items-center justify-between gap-3"><span className={`rounded-full px-2.5 py-1 font-data text-[10px] font-bold tracking-[.14em] ${advice.level === 'GO' || advice.level === 'CLEAR' ? 'bg-[#d8ebde] text-[#31595a]' : advice.level === 'CAUTION' ? 'bg-[#f7d6c9] text-[#7c3f36]' : 'bg-[#f4ead8] text-[#80643e]'}`}>{advice.level}</span><span className="font-data text-[10px] text-[#a5c7bd]">LIVE FORECAST</span></div><h2 className="mt-4 font-display text-3xl leading-tight">{advice.title}</h2><p className="mt-3 text-sm leading-relaxed text-[#b2cbc2]">{advice.detail}</p><div className="mt-5 flex items-start gap-2 rounded-xl bg-[#2c5960] p-3 text-sm font-semibold"><ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-[#e88c2f]" />{advice.action}</div></> : <p className="mt-6 text-sm text-[#b2cbc2]">Reading the latest forecast before making a recommendation.</p>}
+        <div className="mt-6 border-t border-[#6e9f98]/35 pt-5"><p className="font-data text-[10px] uppercase tracking-[.18em] text-[#a5c7bd]">ASK A SPECIFIC QUESTION</p><div className="mt-3 flex gap-2"><input value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') ask(); }} placeholder="Is it safe to travel tomorrow?" className="min-w-0 flex-1 rounded-xl border border-[#6e9f98]/45 bg-[#214d55] px-3 py-2.5 text-sm text-[#f7f2e7] outline-none placeholder:text-[#a5c7bd] focus:border-[#e88c2f]" /><VoiceButton onText={setPrompt} lang={language} label="Speak your question" /><button onClick={() => ask()} className="rounded-xl bg-[#e88c2f] px-3 py-2.5 text-sm font-bold text-[#173e47] transition hover:bg-[#f0aa52]" data-testid="button-ask-decision">Ask</button></div><div className="mt-3 flex flex-wrap gap-2">{quickPrompts.map((item) => <button key={item} onClick={() => ask(item)} className="rounded-full border border-[#6e9f98]/45 px-3 py-1.5 text-left text-xs text-[#b2cbc2] transition hover:border-[#e88c2f] hover:text-[#f7f2e7]">{item}</button>)}</div></div>
+      </div>
+    </section>}
+    {!error && <section className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
+      <div className="rounded-[1.5rem] border border-[hsl(var(--card-border))] bg-[hsl(var(--card))] p-5 sm:p-6"><div className="flex items-end justify-between"><div><p className="font-data text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(var(--accent))]">EXPLAINABLE SIGNALS</p><h2 className="mt-2 font-display text-3xl">What the advice is based on.</h2></div><Sprout className="h-5 w-5 text-[#6fa9a1]" /></div><div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">{data ? [['Rain', `${data.days[0].rainChance}%`, data.days[0].rain >= 12 ? 'watch' : 'open'], ['Wind', `${Math.round(data.days[0].wind)} km/h`, data.days[0].wind >= 35 ? 'watch' : 'open'], ['High', formatTemp(data.days[0].max, unit), data.days[0].max >= 35 ? 'watch' : 'open'], ['Visibility', `${(data.current.visibility / 1000).toFixed(1)} km`, data.current.visibility < 5000 ? 'watch' : 'open']].map(([label, value, state]) => <div key={label} className="rounded-xl border border-[hsl(var(--border))] p-3"><p className="text-xs text-[hsl(var(--muted-foreground))]">{label}</p><p className="mt-2 font-display text-2xl">{value}</p><p className={`mt-1 text-[10px] font-bold uppercase tracking-wider ${state === 'watch' ? 'text-[#b04d42]' : 'text-[#38705c]'}`}>{state}</p></div>) : Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-24" />)}</div></div>
+      <div className="rounded-[1.5rem] border border-[#d5aa76] bg-[#f4ead8] p-5 sm:p-6"><div className="flex items-center gap-2 text-[#7c6245]"><ShieldAlert className="h-4 w-4" /><span className="font-data text-[10px] font-bold uppercase tracking-[.2em]">SAFETY NOTE</span></div><h2 className="mt-4 font-display text-2xl">Action, not an official warning.</h2><p className="mt-3 text-sm leading-relaxed text-[#5f5947]">Use this mode to decide what to check next. For emergencies, marine travel, flood-prone routes, or severe weather, follow IMD and local disaster-management alerts.</p><button onClick={refresh} className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#7c6245] underline underline-offset-4"><RefreshCw className="h-4 w-4" /> Refresh live signals</button></div>
+    </section>}
+  </div>;
+}
+
 function SettingsPage({ location, setLocation, language, setLanguage, unit, setUnit }: { location: LocationPoint; setLocation: (location: LocationPoint) => void; language: Language; setLanguage: (language: Language) => void; unit: Unit; setUnit: (unit: Unit) => void }) {
   const [saved, setSaved] = useState(false);
   const save = () => { localStorage.setItem('mausam-mitra-settings', JSON.stringify({ language, unit, location })); setSaved(true); window.setTimeout(() => setSaved(false), 2200); };
@@ -482,7 +584,7 @@ function NotFoundPage() {
 }
 
 function Router({ location, setLocation, language, setLanguage, unit, setUnit }: { location: LocationPoint; setLocation: (location: LocationPoint) => void; language: Language; setLanguage: (language: Language) => void; unit: Unit; setUnit: (unit: Unit) => void }) {
-  return <Shell location={location} setLocation={setLocation} language={language} setLanguage={setLanguage}><Switch><Route path="/"><HomePage location={location} language={language} unit={unit} /></Route><Route path="/climate"><ClimatePage location={location} language={language} /></Route><Route path="/advisories"><AdvisoryPage location={location} language={language} unit={unit} /></Route><Route path="/decision-desk"><DecisionPage location={location} language={language} unit={unit} /></Route><Route path="/settings"><SettingsPage location={location} setLocation={setLocation} language={language} setLanguage={setLanguage} unit={unit} setUnit={setUnit} /></Route><Route component={NotFoundPage} /></Switch></Shell>;
+  return <Shell location={location} setLocation={setLocation} language={language} setLanguage={setLanguage}><Switch><Route path="/"><HomePage location={location} language={language} unit={unit} /></Route><Route path="/climate"><ClimatePage location={location} language={language} /></Route><Route path="/advisories"><AdvisoryPage location={location} language={language} unit={unit} /></Route><Route path="/decision-desk"><WeatherTwinPage location={location} language={language} unit={unit} /></Route><Route path="/settings"><SettingsPage location={location} setLocation={setLocation} language={language} setLanguage={setLanguage} unit={unit} setUnit={setUnit} /></Route><Route component={NotFoundPage} /></Switch></Shell>;
 }
 
 function App() {
